@@ -21,13 +21,22 @@ OneWire ds(DS18S20_Pin);                          //3번 핀과 연결되 OneWir
 OneWire ds2(DS18S20_Pin_4);
 
 LiquidCrystal_I2C lcd(0x27,16,2); // LCD주소: 0x27 또는 0x3F
+int relay1 = 9;
+int relay2 = 10;
+
+float TemperatureSum1,TemperatureSum2;
 
 void setup_lcd(){
-  //lcd.begin();
-  lcd.init();
+  lcd.begin();
+  //lcd.init();
   lcd.backlight();
   lcd.setCursor(2,0);
   lcd.clear(); 
+}
+
+void setup_relay(){
+   pinMode (relay1, OUTPUT);
+   pinMode (relay2, OUTPUT);  
 }
 
 void setup()
@@ -36,23 +45,23 @@ void setup()
   setup_lcd();
   ec.begin();
   ph.begin();
+  setup_relay();
 }
 
 void loop()
 {
   getEc();
-  delay(300);
+  delay(100);
   getPh();
-//  float temperature = getTemp();//온도 측정 후 변수에 저장
-//  Serial.print("temp: ");
-//  Serial.println(temperature);
-//  float temperature2 = getTemp2();//온도 측정 후 변수에 저장
-//  Serial.print("temp2: ");
-//  Serial.println(temperature2);
-    lcd_display();
+  delay(100);
+  getTemp1();
+  getTemp2();
+  lcd_display();
   delay(100);
 }
-float getTemp(){                                   //온도 측정 후 반환하는 함수
+
+//출수 온도 측정 후 반환하는 함수 & 릴레이를 통해 펠티어 제어
+void getTemp1(){    
  byte data[12];
  byte addr[8];
  if ( !ds.search(addr)) {
@@ -82,11 +91,22 @@ float getTemp(){                                   //온도 측정 후 반환하
  byte MSB = data[1];
  byte LSB = data[0];
  float tempRead = ((MSB << 8) | LSB); 
- float TemperatureSum = tempRead / 16; 
- return TemperatureSum;                                                                    
+ TemperatureSum1 = tempRead / 16;   
+ 
+ //펠티어 제어
+ int TemperatureSum = (int) TemperatureSum1;
+ if(TemperatureSum >= 20){
+  digitalWrite (relay1, HIGH);
+  digitalWrite (relay1, HIGH); 
+ }else if(TemperatureSum <= 18){
+  digitalWrite (relay2, LOW);
+  digitalWrite (relay2, LOW);
+ }
+                                                                   
 }
 
-float getTemp2(){                                   //온도 측정 후 반환하는 함수
+//입수 온도 측정 후 반환하는 함수
+void getTemp2(){                                   
  byte data[12];
  byte addr[8];
  
@@ -117,8 +137,7 @@ float getTemp2(){                                   //온도 측정 후 반환�
  byte MSB = data[1];
  byte LSB = data[0];
  float tempRead = ((MSB << 8) | LSB); 
- float TemperatureSum = tempRead / 16; 
- return TemperatureSum;                                                                    
+ TemperatureSum2 = tempRead / 16;                                                                   
 }
 
 float getEc(){
@@ -159,9 +178,9 @@ void lcd_display(){
   
   lcd.setCursor(0,0); // LCD Cursor 원점
   lcd.print("T1:"); // LCD에 "temp" 표시
-  lcd.print(getTemp()); // 온도값 LCD로 출력
+  lcd.print(TemperatureSum1); // 온도값 LCD로 출력
   lcd.print("T2:"); // LCD에 "temp" 표시
-  lcd.print(getTemp2()); // 온도값 LCD로 출력
+  lcd.print(TemperatureSum2); // 온도값 LCD로 출력
   
   lcd.setCursor(0,1); // LCD Cursor 원점
   lcd.print("EC:"); // LCD에 "temp" 표시
